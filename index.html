@@ -176,10 +176,48 @@
   }
   .trade-pill .dot{width:8px;height:8px;border-radius:2px;flex:none;}
   .assign-area{color:var(--ink-soft); font-size:12.5px;}
-  .empty-note{
+    .empty-note{
     padding:26px 14px; text-align:center; color:var(--ink-soft); font-size:13.5px;
     font-family:'IBM Plex Mono',monospace;
   }
+
+  .roster-grid{padding:14px 14px 4px;}
+  .roster-trade{margin-bottom:14px;}
+  .roster-trade-head{
+    display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);
+    padding:6px 0; border-bottom:1px solid var(--line); margin-bottom:8px;
+  }
+  .roster-trade-head .dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .roster-trade-head .count{margin-left:auto; color:var(--ink); font-weight:600;}
+  .roster-members{display:flex; flex-wrap:wrap; gap:8px;}
+  .roster-pill{
+    display:flex; align-items:center; gap:8px; background:var(--concrete); border-radius:20px;
+    padding:5px 6px 5px 12px; font-size:12.5px;
+  }
+  .roster-pill .name{font-weight:600;}
+  .roster-pill .id{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft);}
+  .roster-pill button{
+    width:18px;height:18px;border-radius:50%;border:none;background:rgba(35,38,43,.14);color:var(--ink);
+    cursor:pointer; font-size:12px; line-height:1; display:flex; align-items:center; justify-content:center;
+    flex:none; transition:background .15s, color .15s;
+  }
+  .roster-pill button:hover{background:var(--orange); color:#fff;}
+  .roster-empty{font-size:12px; color:var(--ink-soft); font-style:italic; padding:4px 0 10px;}
+  .roster-add{
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:16px 14px;
+    border-top:1px solid var(--line-strong); background:var(--concrete-light); border-radius:0 0 6px 6px;
+  }
+  .roster-add select, .roster-add input[type=text]{
+    font-family:'Inter',sans-serif; font-size:13px; padding:8px 10px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
+  .roster-add input[type=text]{flex:1; min-width:160px;}
+  .roster-add button{
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600; background:var(--ink); color:var(--paper);
+    border:none; border-radius:4px; padding:9px 16px; cursor:pointer; transition:background .15s;
+  }
+  .roster-add button:hover{background:var(--orange);}
 
   /* ---------- timeline shared (loading + gantt) ---------- */
   .tl-shell{display:flex;}
@@ -284,9 +322,24 @@
     </div>
   </header>
 
+    <section id="sec-roster">
+    <div class="sec-head">
+      <div><div class="sec-num">01 — Team</div><h2>Crew Roster</h2></div>
+      <div class="sec-desc">Add or remove people. Changes apply to the delegation board right away.</div>
+    </div>
+    <div class="panel">
+      <div class="roster-grid" id="roster-grid"></div>
+      <form class="roster-add" id="roster-add-form">
+        <select id="roster-trade-select" aria-label="Trade"></select>
+        <input type="text" id="roster-name-input" placeholder="Worker name" aria-label="Worker name" required maxlength="60">
+        <button type="submit">Add to crew</button>
+      </form>
+    </div>
+  </section>
+
   <section id="sec-board">
     <div class="sec-head">
-      <div><div class="sec-num">01 — Crew Assignment</div><h2>Manpower Delegation</h2></div>
+      <div><div class="sec-num">02 — Crew Assignment</div><h2>Manpower Delegation</h2></div>
       <div class="sec-desc">Who's on site and what they're assigned to for the selected date.</div>
     </div>
     <div class="panel">
@@ -299,7 +352,7 @@
 
   <section id="sec-loading">
     <div class="sec-head">
-      <div><div class="sec-num">02 — Headcount</div><h2>Manpower Loading</h2></div>
+      <div><div class="sec-num">03 — Headcount</div><h2>Manpower Loading</h2></div>
       <div class="sec-desc">Daily crew count by trade, from planned activity coverage.</div>
     </div>
     <div class="panel">
@@ -315,7 +368,7 @@
 
   <section id="sec-gantt">
     <div class="sec-head">
-      <div><div class="sec-num">03 — Sequence</div><h2>Construction Gantt</h2></div>
+      <div><div class="sec-num">04 — Sequence</div><h2>Construction Gantt</h2></div>
       <div class="sec-desc">Activity durations and progress. Outlined bars sit on the critical path.</div>
     </div>
     <div class="panel">
@@ -412,6 +465,81 @@
       const nm = NAMES[nameCursor % NAMES.length]; nameCursor++;
       roster[t.id].push({ id: t.id+'-'+String(i+1).padStart(2,'0'), name: nm });
     }
+  });
+
+    // ---------- roster editing: add / remove workers ----------
+  const workerSeq = {};
+  TRADES.forEach(t=> workerSeq[t.id] = roster[t.id].length);
+
+  function addWorker(tradeId, name){
+    workerSeq[tradeId] += 1;
+    const id = tradeId+'-'+String(workerSeq[tradeId]).padStart(2,'0');
+    roster[tradeId].push({ id, name });
+    renderRoster();
+    renderBoard();
+  }
+  function removeWorker(tradeId, workerId){
+    roster[tradeId] = roster[tradeId].filter(w=> w.id!==workerId);
+    renderRoster();
+    renderBoard();
+  }
+
+  const rosterGrid = document.getElementById('roster-grid');
+  function renderRoster(){
+    rosterGrid.innerHTML='';
+    TRADES.forEach(t=>{
+      const members = roster[t.id];
+      const block = document.createElement('div');
+      block.className='roster-trade';
+
+      const head = document.createElement('div');
+      head.className='roster-trade-head';
+      head.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.name}<span class="count">${members.length}</span>`;
+      block.appendChild(head);
+
+      const list = document.createElement('div');
+      list.className='roster-members';
+      if(members.length===0){
+        const empty = document.createElement('div');
+        empty.className='roster-empty';
+        empty.textContent='No one on this trade yet.';
+        list.appendChild(empty);
+      } else {
+        members.forEach(w=>{
+          const pill = document.createElement('div');
+          pill.className='roster-pill';
+          const nameEl = document.createElement('span');
+          nameEl.className='name'; nameEl.textContent=w.name;
+          const idEl = document.createElement('span');
+          idEl.className='id'; idEl.textContent=w.id;
+          const btn = document.createElement('button');
+          btn.type='button';
+          btn.textContent='×';
+          btn.setAttribute('aria-label','Remove '+w.name);
+          btn.addEventListener('click', ()=> removeWorker(t.id, w.id));
+          pill.appendChild(nameEl); pill.appendChild(idEl); pill.appendChild(btn);
+          list.appendChild(pill);
+        });
+      }
+      block.appendChild(list);
+      rosterGrid.appendChild(block);
+    });
+  }
+
+  const tradeSelect = document.getElementById('roster-trade-select');
+  TRADES.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value=t.id; opt.textContent=t.name;
+    tradeSelect.appendChild(opt);
+  });
+  document.getElementById('roster-add-form').addEventListener('submit', e=>{
+    e.preventDefault();
+    const nameInput = document.getElementById('roster-name-input');
+    const name = nameInput.value.trim();
+    if(!name) return;
+    addWorker(tradeSelect.value, name);
+    nameInput.value='';
+    nameInput.focus();
   });
 
   // ---------- daily assignment: pointer-based, resets each day, no double-booking ----------
@@ -683,7 +811,8 @@
   linkScroll(loadScroll, ganttScroll);
   linkScroll(ganttScroll, loadScroll);
 
-  // ---------- init ----------
+    // ---------- init ----------
+  renderRoster();
   renderLoading();
   renderGantt();
   setDate(new Date(TODAY));
