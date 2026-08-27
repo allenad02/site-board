@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Board — Riverside Residences, Block C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --concrete-light:#F4F2ED;
+    --concrete:#E8E5DD;
+    --concrete-dark:#D8D3C8;
+    --ink:#23262B;
+    --ink-soft:#4B4F56;
+    --line:rgba(35,38,43,0.14);
+    --line-strong:rgba(35,38,43,0.28);
+    --orange:#E1592A;
+    --orange-soft:#F6DACB;
+    --yellow:#F0B429;
+    --paper:#FBFAF7;
+
+    --t-fm:#2B2E33;
+    --t-ms:#E1592A;
+    --t-cp:#B9823E;
+    --t-st:#5B6472;
+    --t-el:#E3AC1B;
+    --t-pl:#3E7CB1;
+    --t-pt:#4C7A56;
+    --t-lb:#9A9D9F;
+
+    --day-w:26px;
+    --row-h:34px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--concrete-light);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+  ::selection{background:var(--orange-soft);}
+
+  /* ---------- header ---------- */
+  header.board{
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:6px;
+    padding:26px 28px 22px;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 10px 30px -14px rgba(0,0,0,.45);
+  }
+  header.board::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 10px);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--yellow);
+    display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;background:var(--yellow);display:inline-block;border-radius:1px;transform:rotate(45deg);}
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    font-size:clamp(28px,4vw,40px);
+    margin:6px 0 4px;
+    line-height:1.05;
+  }
+  .subtitle{color:rgba(251,250,247,.66);font-size:14px;max-width:520px;}
+  .stamp{
+    position:absolute; top:22px; right:28px;
+    border:2px solid var(--orange);
+    color:var(--orange);
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:8px 14px;
+    border-radius:3px;
+    transform:rotate(4deg);
+    text-align:center;
+    line-height:1.5;
+    background:rgba(225,89,42,0.06);
+  }
+  .stamp b{display:block;font-size:18px;font-family:'Oswald',sans-serif;letter-spacing:.02em;}
+  @media (max-width:640px){ .stamp{position:static;display:inline-block;margin-top:14px;transform:rotate(-2deg);} }
+
+  /* ---------- controls ---------- */
+  .controls{
+    display:flex; flex-wrap:wrap; gap:14px;
+    align-items:center; justify-content:space-between;
+    margin-top:18px; padding-top:16px;
+    border-top:1px solid rgba(251,250,247,.16);
+  }
+  .datebar{display:flex; align-items:center; gap:10px;}
+  .datebar button{
+    width:30px;height:30px;border-radius:4px;border:1px solid rgba(251,250,247,.3);
+    background:transparent;color:var(--paper);cursor:pointer;font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .datebar button:hover{background:rgba(251,250,247,.12);}
+  .date-readout{
+    font-family:'IBM Plex Mono',monospace; font-size:13.5px; min-width:172px; text-align:center;
+    letter-spacing:.02em;
+  }
+  .today-btn{
+    font-family:'Inter',sans-serif; font-size:12px; font-weight:600;
+    background:var(--orange); color:var(--paper); border:none; border-radius:4px;
+    padding:7px 12px; cursor:pointer; letter-spacing:.02em;
+  }
+  .trades{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    border:1px solid rgba(251,250,247,.32); color:rgba(251,250,247,.85);
+    background:transparent; border-radius:20px; padding:5px 11px 5px 9px;
+    cursor:pointer; display:flex; align-items:center; gap:6px;
+    transition:.15s;
+  }
+  .chip .dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+  .chip.active{background:rgba(251,250,247,.14); border-color:rgba(251,250,247,.7); color:#fff;}
+  .chip.dim{opacity:.35;}
+
+  /* ---------- section shell ---------- */
+  section{margin-top:34px;}
+  .sec-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace; color:var(--orange); font-size:12px; letter-spacing:.08em;
+  }
+  h2{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.02em;
+    font-size:20px; margin:2px 0 0; font-weight:600;
+  }
+  .sec-desc{font-size:13px; color:var(--ink-soft); max-width:440px; text-align:right;}
+  .panel{
+    background:var(--paper); border:1px solid var(--line-strong); border-radius:6px;
+    box-shadow:0 1px 0 rgba(0,0,0,.02);
+  }
+
+  /* ---------- delegation board ---------- */
+  #board-body{padding:6px;}
+  .crew-row{
+    display:grid; grid-template-columns:56px 1.4fr 1.6fr 1fr; gap:0;
+    align-items:center; padding:10px 14px; border-bottom:1px solid var(--line);
+    font-size:13.5px; transition:opacity .15s;
+  }
+  .crew-row:last-child{border-bottom:none;}
+  .crew-row.head{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--ink-soft); padding-top:6px; padding-bottom:8px;
+  }
+  .crew-row.dim{opacity:.3;}
+  .id-tag{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+    background:var(--concrete); border-radius:3px; padding:3px 6px; width:fit-content;
+  }
+  .worker-name{font-weight:600;}
+  .trade-pill{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);
+  }
+  .trade-pill .dot{width:8px;height:8px;border-radius:2px;flex:none;}
+  .assign-area{color:var(--ink-soft); font-size:12.5px;}
+  .empty-note{
+    padding:26px 14px; text-align:center; color:var(--ink-soft); font-size:13.5px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  /* ---------- timeline shared (loading + gantt) ---------- */
+  .tl-shell{display:flex;}
+  .tl-side{
+    flex:none; width:190px; border-right:1px solid var(--line-strong);
+  }
+  .tl-side .side-cell{
+    height:var(--row-h); display:flex; align-items:center; padding:0 12px;
+    font-size:12px; border-bottom:1px solid var(--line); color:var(--ink-soft);
+  }
+  .tl-scroll{overflow-x:auto; flex:1; scrollbar-width:thin;}
+  .tl-scroll::-webkit-scrollbar{height:8px;}
+  .tl-scroll::-webkit-scrollbar-thumb{background:var(--concrete-dark); border-radius:4px;}
+  .tl-inner{position:relative;}
+  .tl-ruler{
+    display:flex; height:30px; border-bottom:1px solid var(--line-strong);
+    position:sticky; top:0; background:var(--paper); z-index:2;
+  }
+  .tl-day{
+    width:var(--day-w); flex:none; font-family:'IBM Plex Mono',monospace; font-size:9.5px;
+    color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-right:1px solid var(--line); position:relative;
+  }
+  .tl-day.sun{background:rgba(35,38,43,0.035);}
+  .tl-day .wk{font-weight:600; color:var(--ink);}
+  .tl-grid-row{
+    height:var(--row-h); border-bottom:1px solid var(--line); position:relative;
+    background-image:linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:var(--day-w) var(--row-h);
+  }
+  .today-line{
+    position:absolute; top:0; bottom:0; width:2px; background:var(--orange); z-index:3; pointer-events:none;
+  }
+  .today-line::before{
+    content:"TODAY"; position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+    font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.06em; color:var(--orange);
+    white-space:nowrap; font-weight:600;
+  }
+
+  /* loading bars */
+  .load-seg{position:absolute; bottom:0; border-radius:1px 1px 0 0; transition:opacity .15s;}
+  .load-total{
+    position:absolute; top:2px; font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--ink-soft);
+    transform:translateX(-50%);
+  }
+
+  /* gantt bars */
+  .gantt-bar{
+    position:absolute; top:6px; height:22px; border-radius:4px;
+    display:flex; align-items:center; overflow:hidden; cursor:pointer;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+    transition:opacity .15s, transform .1s;
+  }
+  .gantt-bar:hover{transform:translateY(-1px);}
+  .gantt-bar .fill{position:absolute; inset:0; background:rgba(255,255,255,.55);}
+  .gantt-bar .fill-done{position:absolute; left:0; top:0; bottom:0; background:rgba(0,0,0,.16);}
+  .gantt-bar .lbl{
+    position:relative; z-index:1; font-size:10.5px; font-weight:600; color:var(--ink);
+    padding:0 8px; white-space:nowrap; text-shadow:0 1px 0 rgba(255,255,255,.4);
+  }
+  .gantt-bar.critical{box-shadow:inset 0 0 0 1.5px var(--ink);}
+  .gantt-bar.dim{opacity:.28;}
+  .gantt-side .side-cell{flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; height:44px;}
+  .gantt-side .side-cell .a-name{font-size:12px; font-weight:600; color:var(--ink); line-height:1.15;}
+  .gantt-side .side-cell .a-area{font-size:10px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  .gantt-grid-row{height:44px;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:14px; padding:12px 14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-soft);}
+  .legend .item{display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px;height:9px;border-radius:2px;}
+  .legend .crit-swatch{width:16px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--ink); background:var(--concrete);}
+
+  footer{margin-top:40px; text-align:center; font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+
+  @media (max-width:720px){
+    .sec-desc{display:none;}
+    .stamp{font-size:11px;}
+    .tl-side{width:120px;}
+    .crew-row{grid-template-columns:44px 1fr 1fr; }
+    .crew-row .assign-area{display:none;}
+    .crew-row.head > div:nth-child(4){display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="board">
+    <div class="eyebrow">Daily Site Board</div>
+    <h1>Riverside Residences — Block C</h1>
+    <div class="subtitle">Manpower delegation, loading, and construction schedule for the Block C structural &amp; MEP works.</div>
+    <div class="stamp" id="stamp">DAY <b id="stampDay">—</b> OF 49</div>
+
+    <div class="controls">
+      <div class="datebar">
+        <button id="prevDay" aria-label="Previous day">‹</button>
+        <div class="date-readout" id="dateReadout">—</div>
+        <button id="nextDay" aria-label="Next day">›</button>
+        <button class="today-btn" id="todayBtn">Jump to today</button>
+      </div>
+      <div class="trades" id="tradeChips"></div>
+    </div>
+  </header>
+
+  <section id="sec-board">
+    <div class="sec-head">
+      <div><div class="sec-num">01 — Crew Assignment</div><h2>Manpower Delegation</h2></div>
+      <div class="sec-desc">Who's on site and what they're assigned to for the selected date.</div>
+    </div>
+    <div class="panel">
+      <div class="crew-row head">
+        <div>ID</div><div>Worker / Trade</div><div>Assigned to</div><div>Area</div>
+      </div>
+      <div id="board-body"></div>
+    </div>
+  </section>
+
+  <section id="sec-loading">
+    <div class="sec-head">
+      <div><div class="sec-num">02 — Headcount</div><h2>Manpower Loading</h2></div>
+      <div class="sec-desc">Daily crew count by trade, from planned activity coverage.</div>
+    </div>
+    <div class="panel">
+      <div class="tl-shell">
+        <div class="tl-side" id="load-side"></div>
+        <div class="tl-scroll" id="load-scroll">
+          <div class="tl-inner" id="load-inner"></div>
+        </div>
+      </div>
+      <div class="legend" id="load-legend"></div>
+    </div>
+  </section>
+
+  <section id="sec-gantt">
+    <div class="sec-head">
+      <div><div class="sec-num">03 — Sequence</div><h2>Construction Gantt</h2></div>
+      <div class="sec-desc">Activity durations and progress. Outlined bars sit on the critical path.</div>
+    </div>
+    <div class="panel">
+      <div class="tl-shell">
+        <div class="tl-side gantt-side" id="gantt-side"></div>
+        <div class="tl-scroll" id="gantt-scroll">
+          <div class="tl-inner" id="gantt-inner"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="item"><span class="crit-swatch"></span> Critical path</div>
+        <div class="item"><span class="dot" style="background:rgba(0,0,0,.16)"></span> Progress complete</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Riverside Residences, Block C — Site Board · scroll the timeline sections to view the full 49‑day sequence</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- data ----------
+  const TRADES = [
+    {id:'FM', name:'Foreman',     color:'var(--t-fm)'},
+    {id:'MS', name:'Mason',       color:'var(--t-ms)'},
+    {id:'CP', name:'Carpenter',   color:'var(--t-cp)'},
+    {id:'ST', name:'Steel Fixer', color:'var(--t-st)'},
+    {id:'EL', name:'Electrician', color:'var(--t-el)'},
+    {id:'PL', name:'Plumber',     color:'var(--t-pl)'},
+    {id:'PT', name:'Painter',     color:'var(--t-pt)'},
+    {id:'LB', name:'Laborer',     color:'var(--t-lb)'},
+  ];
+  const tradeById = Object.fromEntries(TRADES.map(t=>[t.id,t]));
+
+  const ACTIVITIES = [
+    {id:'A01', name:'Site Clearing & Layout',      area:'Whole Site',   start:'2026-08-03', end:'2026-08-07', crew:{LB:4, FM:1}, critical:true},
+    {id:'A02', name:'Excavation',                   area:'Foundation',   start:'2026-08-06', end:'2026-08-13', crew:{LB:6, FM:1}, critical:true},
+    {id:'A03', name:'Foundation Formworks',         area:'Footing',      start:'2026-08-11', end:'2026-08-18', crew:{CP:5, LB:2}, critical:true},
+    {id:'A04', name:'Rebar Installation — Footing', area:'Footing',      start:'2026-08-13', end:'2026-08-20', crew:{ST:5, LB:2}, critical:false},
+    {id:'A05', name:'Concrete Pour — Foundation',   area:'Footing',      start:'2026-08-19', end:'2026-08-23', crew:{LB:6, MS:2, FM:1}, critical:true},
+    {id:'A06', name:'Column Formworks — GF',        area:'Ground Floor', start:'2026-08-21', end:'2026-08-29', crew:{CP:6, LB:2}, critical:true},
+    {id:'A07', name:'Rebar Installation — Columns', area:'Ground Floor', start:'2026-08-23', end:'2026-08-30', crew:{ST:5, LB:2}, critical:false},
+    {id:'A08', name:'Concrete Pour — Columns',      area:'Ground Floor', start:'2026-08-28', end:'2026-09-01', crew:{LB:6, MS:2, FM:1}, critical:true},
+    {id:'A09', name:'Slab Formworks — 2F',          area:'2nd Floor',    start:'2026-08-29', end:'2026-09-06', crew:{CP:6, LB:3}, critical:true},
+    {id:'A10', name:'Masonry — GF Walls',           area:'Ground Floor', start:'2026-09-02', end:'2026-09-11', crew:{MS:6, LB:3, FM:1}, critical:false},
+    {id:'A11', name:'MEP Rough-in — GF',            area:'Ground Floor', start:'2026-09-03', end:'2026-09-10', crew:{EL:3, PL:3}, critical:false},
+    {id:'A12', name:'Roofing Structure',            area:'Roof',         start:'2026-09-07', end:'2026-09-15', crew:{CP:4, ST:2, LB:2}, critical:true},
+    {id:'A13', name:'Electrical Rough-in — 2F',     area:'2nd Floor',    start:'2026-09-09', end:'2026-09-16', crew:{EL:4}, critical:false},
+    {id:'A14', name:'Plumbing Rough-in — 2F',       area:'2nd Floor',    start:'2026-09-10', end:'2026-09-17', crew:{PL:4}, critical:false},
+    {id:'A15', name:'Plastering & Finishing',       area:'Ground Floor', start:'2026-09-12', end:'2026-09-20', crew:{MS:4, PT:3, LB:2}, critical:false},
+  ];
+
+  const NAMES = ["R. Alvarez","J. Domingo","M. Santos","K. Reyes","T. Bautista","P. Navarro","L. Cruz","D. Villar",
+    "E. Ramos","N. Torres","B. Aquino","C. Salazar","F. Mercado","S. Ocampo","G. Pascual","V. Herrera",
+    "A. Castillo","W. Fernandez","O. Guerrero","I. Delacruz","H. Manalo","Y. Bernardo","Q. Espino","U. Marquez",
+    "Z. Trinidad","X. Roldan","J. Ferrer","M. Uy","K. Lazaro","T. Roque"];
+
+  // ---------- date helpers ----------
+  const DAY_MS = 86400000;
+  function toDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y, m-1, d); }
+  function fmtISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function fmtLong(d){ return d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric', year:'numeric'}); }
+
+  const projStart = toDate('2026-08-03');
+  const projEnd   = toDate('2026-09-20');
+  const totalDays = Math.round((projEnd-projStart)/DAY_MS)+1;
+  const TODAY = toDate('2026-08-27'); // simulated "today" within the project window
+
+  // ---------- roster: build per-trade roster sized to peak concurrent demand ----------
+  const dayList = [];
+  for(let i=0;i<totalDays;i++){ dayList.push(new Date(projStart.getTime()+i*DAY_MS)); }
+
+  function activitiesOn(date){
+    return ACTIVITIES.filter(a=> toDate(a.start)<=date && date<=toDate(a.end));
+  }
+
+  const peak = {};
+  TRADES.forEach(t=>peak[t.id]=0);
+  dayList.forEach(d=>{
+    const totals={};
+    activitiesOn(d).forEach(a=>{
+      Object.entries(a.crew).forEach(([tr,n])=>{ totals[tr]=(totals[tr]||0)+n; });
+    });
+    Object.entries(totals).forEach(([tr,n])=>{ if(n>peak[tr]) peak[tr]=n; });
+  });
+
+  let nameCursor = 0;
+  const roster = {}; // trade -> [{id,name}]
+  TRADES.forEach(t=>{
+    roster[t.id]=[];
+    for(let i=0;i<peak[t.id];i++){
+      const nm = NAMES[nameCursor % NAMES.length]; nameCursor++;
+      roster[t.id].push({ id: t.id+'-'+String(i+1).padStart(2,'0'), name: nm });
+    }
+  });
+
+  // ---------- daily assignment: pointer-based, resets each day, no double-booking ----------
+  function assignmentsFor(date){
+    const list = []; // {worker, trade, activity, area}
+    const pointer = {};
+    TRADES.forEach(t=>pointer[t.id]=0);
+    const acts = activitiesOn(date).slice().sort((a,b)=> a.id.localeCompare(b.id));
+    acts.forEach(a=>{
+      Object.entries(a.crew).forEach(([tr,n])=>{
+        for(let k=0;k<n;k++){
+          const w = roster[tr][pointer[tr]];
+          pointer[tr]++;
+          if(w) list.push({worker:w, trade:tr, activity:a, area:a.area});
+        }
+      });
+    });
+    return list;
+  }
+
+  // ---------- state ----------
+  let selectedDate = new Date(TODAY);
+  const activeTrades = new Set(TRADES.map(t=>t.id)); // all active by default
+
+  // ---------- render: header controls ----------
+  const dateReadout = document.getElementById('dateReadout');
+  const stampDay = document.getElementById('stampDay');
+  function clampToProject(d){
+    if(d<projStart) return new Date(projStart);
+    if(d>projEnd) return new Date(projEnd);
+    return d;
+  }
+  function setDate(d){
+    selectedDate = clampToProject(d);
+    dateReadout.textContent = fmtLong(selectedDate);
+    const dayNum = Math.round((TODAY-projStart)/DAY_MS)+1;
+    stampDay.textContent = dayNum;
+    renderBoard();
+    renderMarkers();
+  }
+  document.getElementById('prevDay').addEventListener('click', ()=> setDate(new Date(selectedDate.getTime()-DAY_MS)));
+  document.getElementById('nextDay').addEventListener('click', ()=> setDate(new Date(selectedDate.getTime()+DAY_MS)));
+  document.getElementById('todayBtn').addEventListener('click', ()=> setDate(new Date(TODAY)));
+
+  // trade chips
+  const chipWrap = document.getElementById('tradeChips');
+  TRADES.forEach(t=>{
+    const chip = document.createElement('button');
+    chip.className='chip active';
+    chip.innerHTML = '<span class="dot" style="background:'+t.color+'"></span>'+t.name;
+    chip.addEventListener('click', ()=>{
+      if(activeTrades.has(t.id)) activeTrades.delete(t.id); else activeTrades.add(t.id);
+      chip.classList.toggle('active', activeTrades.has(t.id));
+      applyTradeFilter();
+    });
+    chipWrap.appendChild(chip);
+  });
+
+  // ---------- delegation board ----------
+  const boardBody = document.getElementById('board-body');
+  function renderBoard(){
+    const rows = assignmentsFor(selectedDate);
+    boardBody.innerHTML='';
+    if(rows.length===0){
+      boardBody.innerHTML = '<div class="empty-note">No crew scheduled — outside project dates or a rest day.</div>';
+      return;
+    }
+    rows.sort((a,b)=> a.trade.localeCompare(b.trade) || a.worker.id.localeCompare(b.worker.id));
+    rows.forEach(r=>{
+      const t = tradeById[r.trade];
+      const row = document.createElement('div');
+      row.className='crew-row';
+      row.dataset.trade = r.trade;
+      row.innerHTML = `
+        <div><span class="id-tag">${r.worker.id}</span></div>
+        <div>
+          <div class="worker-name">${r.worker.name}</div>
+          <div class="trade-pill"><span class="dot" style="background:${t.color}"></span>${t.name}</div>
+        </div>
+        <div>${r.activity.name}</div>
+        <div class="assign-area">${r.area}</div>`;
+      boardBody.appendChild(row);
+    });
+  }
+
+  // ---------- shared timeline ruler builder ----------
+  function buildRuler(){
+    const ruler = document.createElement('div');
+    ruler.className='tl-ruler';
+    dayList.forEach(d=>{
+      const cell=document.createElement('div');
+      cell.className='tl-day'+(d.getDay()===0?' sun':'');
+      const isFirstOfMonth = d.getDate()===1 || d.getTime()===projStart.getTime();
+      cell.innerHTML = (isFirstOfMonth? '<div style="font-size:8px;color:var(--orange);font-weight:700;">'+d.toLocaleDateString('en-US',{month:'short'})+'</div>':'')
+        + '<div class="wk">'+d.getDate()+'</div>';
+      ruler.appendChild(cell);
+    });
+    return ruler;
+  }
+  const totalWidth = totalDays * 26; // matches --day-w
+
+  // ---------- manpower loading chart ----------
+  const loadSide = document.getElementById('load-side');
+  const loadInner = document.getElementById('load-inner');
+  const loadLegend = document.getElementById('load-legend');
+
+  function renderLoading(){
+    loadSide.innerHTML = '<div class="side-cell" style="height:30px;border-bottom:1px solid var(--line-strong);font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Trade</div>';
+    loadInner.innerHTML='';
+    loadInner.style.width = totalWidth+'px';
+    loadInner.appendChild(buildRuler());
+
+    // find max stacked total for scale
+    let max=1;
+    const perDayTotals = dayList.map(d=>{
+      const t={};
+      activitiesOn(d).forEach(a=> Object.entries(a.crew).forEach(([tr,n])=>{ t[tr]=(t[tr]||0)+n; }));
+      const sum = Object.values(t).reduce((s,v)=>s+v,0);
+      if(sum>max) max=sum;
+      return t;
+    });
+
+    const chartH = 150;
+    const row = document.createElement('div');
+    row.className='tl-grid-row';
+    row.style.height = chartH+'px';
+    row.style.backgroundSize = '26px '+chartH+'px';
+    row.style.position='relative';
+
+    dayList.forEach((d,i)=>{
+      const totals = perDayTotals[i];
+      let yCursor = 0;
+      let sum=0;
+      TRADES.forEach(t=>{
+        const n = totals[t.id]||0;
+        if(n<=0) return;
+        sum+=n;
+        const h = (n/max)*(chartH-18);
+        const seg = document.createElement('div');
+        seg.className='load-seg';
+        seg.dataset.trade = t.id;
+        seg.style.left = (i*26+3)+'px';
+        seg.style.width = '20px';
+        seg.style.height = h+'px';
+        seg.style.bottom = yCursor+'px';
+        seg.style.background = t.color;
+        seg.title = t.name+': '+n+' on '+fmtISO(d);
+        row.appendChild(seg);
+        yCursor += h;
+      });
+      if(sum>0){
+        const lbl = document.createElement('div');
+        lbl.className='load-total';
+        lbl.style.left = (i*26+13)+'px';
+        lbl.style.bottom = (yCursor+2)+'px';
+        lbl.textContent = sum;
+        row.appendChild(lbl);
+      }
+    });
+
+    loadInner.appendChild(row);
+
+    // side label row aligned to chart height
+    loadSide.innerHTML += `<div class="side-cell" style="height:${chartH}px;align-items:flex-end;padding-bottom:6px;">Headcount<br>by trade</div>`;
+
+    // legend
+    loadLegend.innerHTML='';
+    TRADES.forEach(t=>{
+      const item=document.createElement('div');
+      item.className='item';
+      item.dataset.trade=t.id;
+      item.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.name}`;
+      loadLegend.appendChild(item);
+    });
+
+    syncMarkerHost('load-inner', chartH+30);
+  }
+
+  // ---------- gantt chart ----------
+  const ganttSide = document.getElementById('gantt-side');
+  const ganttInner = document.getElementById('gantt-inner');
+
+  function daysBetween(a,b){ return Math.round((b-a)/DAY_MS); }
+
+  function renderGantt(){
+    ganttSide.innerHTML = '<div class="side-cell" style="height:30px;border-bottom:1px solid var(--line-strong);font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Activity</div>';
+    ganttInner.innerHTML='';
+    ganttInner.style.width = totalWidth+'px';
+    ganttInner.appendChild(buildRuler());
+
+    ACTIVITIES.forEach(a=>{
+      ganttSide.innerHTML += `<div class="side-cell"><div class="a-name">${a.name}</div><div class="a-area">${a.area} · ${a.id}</div></div>`;
+
+      const rowEl = document.createElement('div');
+      rowEl.className='tl-grid-row gantt-grid-row';
+      rowEl.style.position='relative';
+
+      const s = toDate(a.start), e = toDate(a.end);
+      const startOff = daysBetween(projStart, s);
+      const spanDays = daysBetween(s,e)+1;
+      const left = startOff*26;
+      const width = spanDays*26 - 4;
+
+      let pct;
+      if(TODAY < s) pct = 0;
+      else if(TODAY > e) pct = 100;
+      else pct = Math.round(((daysBetween(s,TODAY)+1)/spanDays)*100);
+
+      const primaryTrade = Object.keys(a.crew)[0];
+      const color = tradeById[primaryTrade].color;
+
+      const bar = document.createElement('div');
+      bar.className='gantt-bar'+(a.critical?' critical':'');
+      bar.dataset.activity = a.id;
+      bar.dataset.trades = Object.keys(a.crew).join(',');
+      bar.style.left = left+'px';
+      bar.style.width = Math.max(width,10)+'px';
+      bar.style.background = 'color-mix(in srgb, '+color+' 55%, white)';
+      bar.title = a.name+' · '+a.start+' → '+a.end+' · '+pct+'% complete';
+      bar.innerHTML = `<div class="fill-done" style="width:${pct}%"></div><span class="lbl">${a.name}</span>`;
+      bar.addEventListener('click', ()=> setDate(clampToProject(new Date(s))) );
+
+      rowEl.appendChild(bar);
+      ganttInner.appendChild(rowEl);
+    });
+
+    syncMarkerHost('gantt-inner', 30 + ACTIVITIES.length*44);
+  }
+
+  // ---------- today markers ----------
+  function syncMarkerHost(hostId, height){
+    const host = document.getElementById(hostId);
+    const old = host.querySelector('.today-line');
+    if(old) old.remove();
+    const offsetDays = daysBetween(projStart, TODAY);
+    const line = document.createElement('div');
+    line.className='today-line';
+    line.style.left = (offsetDays*26+13)+'px';
+    line.style.height = height+'px';
+    host.appendChild(line);
+  }
+  function renderMarkers(){ /* markers rebuilt with each chart render */ }
+
+  // ---------- trade filter application ----------
+  function applyTradeFilter(){
+    document.querySelectorAll('.crew-row[data-trade]').forEach(el=>{
+      el.classList.toggle('dim', !activeTrades.has(el.dataset.trade));
+    });
+    document.querySelectorAll('.load-seg').forEach(el=>{
+      el.style.opacity = activeTrades.has(el.dataset.trade) ? '1' : '0.12';
+    });
+    document.querySelectorAll('#load-legend .item').forEach(el=>{
+      el.style.opacity = activeTrades.has(el.dataset.trade) ? '1' : '0.35';
+    });
+    document.querySelectorAll('.gantt-bar').forEach(el=>{
+      const trades = el.dataset.trades.split(',');
+      const match = trades.some(t=>activeTrades.has(t));
+      el.classList.toggle('dim', !match);
+    });
+  }
+
+  // ---------- scroll sync between loading & gantt ----------
+  const loadScroll = document.getElementById('load-scroll');
+  const ganttScroll = document.getElementById('gantt-scroll');
+  let syncing=false;
+  function linkScroll(a,b){
+    a.addEventListener('scroll', ()=>{ if(syncing) return; syncing=true; b.scrollLeft=a.scrollLeft; syncing=false; });
+  }
+  linkScroll(loadScroll, ganttScroll);
+  linkScroll(ganttScroll, loadScroll);
+
+  // ---------- init ----------
+  renderLoading();
+  renderGantt();
+  setDate(new Date(TODAY));
+  applyTradeFilter();
+
+  // center scroll on "today" initially
+  requestAnimationFrame(()=>{
+    const offsetDays = daysBetween(projStart, TODAY);
+    const target = Math.max(0, offsetDays*26 - 260);
+    loadScroll.scrollLeft = target;
+    ganttScroll.scrollLeft = target;
+  });
+})();
+</script>
+</body>
+</html>
