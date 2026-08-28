@@ -125,6 +125,12 @@
     background:var(--orange); color:var(--paper); border:none; border-radius:4px;
     padding:7px 12px; cursor:pointer; letter-spacing:.02em;
   }
+  .new-activity-btn{
+    font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600;
+    background:var(--ink); color:var(--paper); border:none; border-radius:4px;
+    padding:8px 14px; cursor:pointer; white-space:nowrap; flex:none;
+  }
+  .new-activity-btn:hover{background:var(--orange);}
   .trades{display:flex; flex-wrap:wrap; gap:6px;}
   .chip{
     font-family:'IBM Plex Mono',monospace; font-size:11px;
@@ -279,6 +285,23 @@
     color:var(--ink-soft); margin:16px 0 8px;
   }
   .am-section-label:first-child{margin-top:0;}
+  .am-name-edit{display:flex; flex-direction:column; gap:8px; margin-bottom:10px;}
+  .am-name-edit input[type=text]{
+    font-family:'Inter',sans-serif; font-size:13.5px; padding:8px 10px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
+  .am-name-edit input#am-name-input{font-weight:600;}
+  .am-critical-toggle{
+    display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace; margin-bottom:4px; cursor:pointer;
+  }
+  .am-critical-toggle input{accent-color:var(--orange); width:14px; height:14px;}
+  .am-delete{
+    margin-top:18px; width:100%; text-align:center; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600;
+    padding:9px 14px; border-radius:4px; border:1px solid var(--line-strong); background:var(--paper);
+    color:var(--orange); cursor:pointer; transition:.15s;
+  }
+  .am-delete:hover{background:var(--orange); color:#fff; border-color:var(--orange);}
   .am-dates-edit{display:flex; gap:10px; margin-bottom:6px;}
   .am-dates-edit label{
     display:flex; flex-direction:column; gap:4px; font-size:10px; font-family:'IBM Plex Mono',monospace;
@@ -485,7 +508,8 @@
   <section id="sec-gantt">
     <div class="sec-head">
       <div><div class="sec-num">04 — Sequence</div><h2>Construction Gantt</h2></div>
-      <div class="sec-desc">Activity durations and progress. Outlined bars sit on the critical path.</div>
+      <div class="sec-desc">Activity durations and progress. Click a bar to edit or add crew, dates, name, or area.</div>
+      <button type="button" id="new-activity-btn" class="new-activity-btn">+ New Activity</button>
     </div>
     <div class="panel">
       <div class="tl-shell">
@@ -508,11 +532,18 @@
       <div class="modal-head">
         <div>
           <div class="modal-eyebrow" id="am-id">—</div>
-          <h3 id="am-title">—</h3>
+          <h3>Edit Activity</h3>
         </div>
         <button type="button" class="modal-close" id="am-close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
+        <div class="am-section-label">Details</div>
+        <div class="am-name-edit">
+          <input type="text" id="am-name-input" placeholder="Activity name" maxlength="60" aria-label="Activity name">
+          <input type="text" id="am-area-input" placeholder="Area / location" maxlength="40" aria-label="Area or location">
+        </div>
+        <label class="am-critical-toggle"><input type="checkbox" id="am-critical-input"> On critical path</label>
+
         <div class="am-section-label">Schedule</div>
         <div class="am-dates-edit">
           <label>Start<input type="date" id="am-start"></label>
@@ -527,6 +558,8 @@
           <input type="number" id="am-count-input" min="1" max="50" value="1" aria-label="Headcount">
           <button type="button" id="am-add-btn">Add position</button>
         </div>
+
+        <button type="button" id="am-delete-btn" class="am-delete">Delete this activity</button>
       </div>
     </div>
   </div>
@@ -1123,8 +1156,10 @@
     if(!a) return;
     currentModalActivityId = id;
     document.getElementById('am-id').textContent = a.id;
-    document.getElementById('am-title').textContent = a.name;
     document.getElementById('am-date-error').hidden = true;
+    amNameInput.value = a.name;
+    amAreaInput.value = a.area;
+    amCriticalInput.checked = !!a.critical;
     amStart.min = fmtISO(projStart); amStart.max = fmtISO(projEnd);
     amEnd.min = fmtISO(projStart); amEnd.max = fmtISO(projEnd);
     amStart.value = a.start; amEnd.value = a.end;
@@ -1134,6 +1169,24 @@
     amBackdrop.hidden = false;
   }
   function closeActivityModal(){ amBackdrop.hidden = true; currentModalActivityId = null; }
+
+  const amNameInput = document.getElementById('am-name-input');
+  const amAreaInput = document.getElementById('am-area-input');
+  const amCriticalInput = document.getElementById('am-critical-input');
+  function updateActivityDetails(){
+    const a = ACTIVITIES.find(x=>x.id===currentModalActivityId);
+    if(!a) return;
+    a.name = amNameInput.value.trim() || 'Untitled Activity';
+    a.area = amAreaInput.value.trim() || 'Unspecified';
+    a.critical = amCriticalInput.checked;
+    amNameInput.value = a.name;
+    amAreaInput.value = a.area;
+    renderGantt();
+    renderBoard();
+  }
+  amNameInput.addEventListener('change', updateActivityDetails);
+  amAreaInput.addEventListener('change', updateActivityDetails);
+  amCriticalInput.addEventListener('change', updateActivityDetails);
 
   const amStart = document.getElementById('am-start');
   const amEnd = document.getElementById('am-end');
@@ -1161,6 +1214,32 @@
   amStart.addEventListener('change', updateActivityDates);
   amEnd.addEventListener('change', updateActivityDates);
 
+  let activitySeq = ACTIVITIES.reduce((max,a)=> Math.max(max, parseInt(a.id.slice(1))||0), 0);
+  function addNewActivity(){
+    activitySeq += 1;
+    const id = 'A'+String(activitySeq).padStart(2,'0');
+    const start = fmtISO(TODAY);
+    const end = fmtISO(clampToProject(new Date(TODAY.getTime()+2*DAY_MS)));
+    const a = { id, name:'New Activity', area:'Unspecified', start, end, crew:{}, critical:false };
+    ACTIVITIES.push(a);
+    renderGantt();
+    renderLoading();
+    renderBoard();
+    openActivityModal(id);
+  }
+  function deleteActivity(id){
+    const idx = ACTIVITIES.findIndex(x=>x.id===id);
+    if(idx===-1) return;
+    if(!window.confirm('Delete "'+ACTIVITIES[idx].name+'"? This cannot be undone.')) return;
+    ACTIVITIES.splice(idx,1);
+    closeActivityModal();
+    renderGantt();
+    renderLoading();
+    renderBoard();
+  }
+
+  document.getElementById('new-activity-btn').addEventListener('click', addNewActivity);
+  document.getElementById('am-delete-btn').addEventListener('click', ()=> deleteActivity(currentModalActivityId));
   document.getElementById('am-close').addEventListener('click', closeActivityModal);
   amBackdrop.addEventListener('click', e=>{ if(e.target===amBackdrop) closeActivityModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !amBackdrop.hidden) closeActivityModal(); });
