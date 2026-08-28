@@ -274,6 +274,24 @@
   }
   .modal-close:hover{background:var(--ink); color:var(--paper); border-color:var(--ink);}
   .modal-body{padding:16px 20px 20px;}
+  .am-section-label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--ink-soft); margin:16px 0 8px;
+  }
+  .am-section-label:first-child{margin-top:0;}
+  .am-dates-edit{display:flex; gap:10px; margin-bottom:6px;}
+  .am-dates-edit label{
+    display:flex; flex-direction:column; gap:4px; font-size:10px; font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); flex:1;
+  }
+  .am-dates-edit input[type=date]{
+    font-family:'Inter',sans-serif; font-size:13px; padding:7px 8px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
+  .am-date-error{
+    font-size:11.5px; color:var(--orange); margin-bottom:10px; font-family:'IBM Plex Mono',monospace;
+  }
+  .am-date-error[hidden]{display:none;}
   .am-crew-list{display:flex; flex-direction:column; gap:8px; margin-bottom:16px;}
   .am-crew-row{
     display:flex; align-items:center; gap:10px; background:var(--concrete); border-radius:6px; padding:8px 10px;
@@ -485,17 +503,24 @@
 
     <footer>Riverside Residences, Block C — Site Board · scroll the timeline sections to view the full 49‑day sequence · click any Gantt bar to edit its crew requirements</footer>
 
-  <div class="modal-backdrop" id="activity-modal-backdrop" hidden>
+    <div class="modal-backdrop" id="activity-modal-backdrop" hidden>
     <div class="modal-panel">
       <div class="modal-head">
         <div>
           <div class="modal-eyebrow" id="am-id">—</div>
           <h3 id="am-title">—</h3>
-          <div class="modal-dates" id="am-dates">—</div>
         </div>
         <button type="button" class="modal-close" id="am-close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
+        <div class="am-section-label">Schedule</div>
+        <div class="am-dates-edit">
+          <label>Start<input type="date" id="am-start"></label>
+          <label>End<input type="date" id="am-end"></label>
+        </div>
+        <div class="am-date-error" id="am-date-error" hidden></div>
+
+        <div class="am-section-label">Crew requirements</div>
         <div class="am-crew-list" id="am-crew-list"></div>
         <div class="am-add-row">
           <select id="am-trade-select" aria-label="Position"></select>
@@ -1093,19 +1118,48 @@
     refreshAfterCrewChange(a);
   }
 
-  function openActivityModal(id){
+    function openActivityModal(id){
     const a = ACTIVITIES.find(x=>x.id===id);
     if(!a) return;
     currentModalActivityId = id;
     document.getElementById('am-id').textContent = a.id;
     document.getElementById('am-title').textContent = a.name;
-    document.getElementById('am-dates').textContent = fmtLong(toDate(a.start))+' → '+fmtLong(toDate(a.end));
+    document.getElementById('am-date-error').hidden = true;
+    amStart.min = fmtISO(projStart); amStart.max = fmtISO(projEnd);
+    amEnd.min = fmtISO(projStart); amEnd.max = fmtISO(projEnd);
+    amStart.value = a.start; amEnd.value = a.end;
     renderAmTradeSelect();
     renderCrewList(a);
     amCountInput.value = 1;
     amBackdrop.hidden = false;
   }
   function closeActivityModal(){ amBackdrop.hidden = true; currentModalActivityId = null; }
+
+  const amStart = document.getElementById('am-start');
+  const amEnd = document.getElementById('am-end');
+  const amDateError = document.getElementById('am-date-error');
+  function updateActivityDates(){
+    const a = ACTIVITIES.find(x=>x.id===currentModalActivityId);
+    if(!a) return;
+    let s = amStart.value, e = amEnd.value;
+    if(!s || !e) return;
+    if(s < fmtISO(projStart)) s = fmtISO(projStart);
+    if(e > fmtISO(projEnd)) e = fmtISO(projEnd);
+    if(s > e){
+      amDateError.textContent = 'Start date must be on or before the end date.';
+      amDateError.hidden = false;
+      amStart.value = a.start; amEnd.value = a.end;
+      return;
+    }
+    amDateError.hidden = true;
+    a.start = s; a.end = e;
+    amStart.value = s; amEnd.value = e;
+    renderGantt();
+    renderLoading();
+    renderBoard();
+  }
+  amStart.addEventListener('change', updateActivityDates);
+  amEnd.addEventListener('change', updateActivityDates);
 
   document.getElementById('am-close').addEventListener('click', closeActivityModal);
   amBackdrop.addEventListener('click', e=>{ if(e.target===amBackdrop) closeActivityModal(); });
