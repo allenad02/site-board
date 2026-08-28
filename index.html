@@ -250,7 +250,59 @@
   }
   .tip-btn:hover{background:var(--orange);}
   .tip-btn.ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line-strong);}
-  .tip-btn.ghost:hover{background:var(--concrete); color:var(--ink);}
+    .tip-btn.ghost:hover{background:var(--concrete); color:var(--ink);}
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(35,38,43,.55); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-backdrop[hidden]{display:none;}
+  .modal-panel{
+    background:var(--paper); border-radius:8px; width:100%; max-width:420px; max-height:86vh; overflow-y:auto;
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.5); border:1px solid var(--line-strong);
+  }
+  .modal-head{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:18px 20px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .modal-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--orange);}
+  .modal-panel h3{font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:17px; margin:3px 0 4px; font-weight:600;}
+  .modal-dates{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft);}
+  .modal-close{
+    width:28px;height:28px;border-radius:4px;border:1px solid var(--line-strong); background:var(--paper); color:var(--ink);
+    cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .modal-close:hover{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+  .modal-body{padding:16px 20px 20px;}
+  .am-crew-list{display:flex; flex-direction:column; gap:8px; margin-bottom:16px;}
+  .am-crew-row{
+    display:flex; align-items:center; gap:10px; background:var(--concrete); border-radius:6px; padding:8px 10px;
+  }
+  .am-crew-left{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; flex:1;}
+  .am-crew-left .dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .am-count{
+    width:56px; font-family:'IBM Plex Mono',monospace; font-size:13px; padding:6px 8px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink); text-align:center;
+  }
+  .am-remove{
+    width:26px;height:26px;border-radius:50%;border:none;background:rgba(35,38,43,.14); color:var(--ink);
+    cursor:pointer; font-size:13px; flex:none; display:flex; align-items:center; justify-content:center;
+  }
+  .am-remove:hover{background:var(--orange); color:#fff;}
+  .am-add-row{display:flex; gap:8px; padding-top:14px; border-top:1px dashed var(--line-strong);}
+  .am-add-row select{
+    flex:1; font-family:'Inter',sans-serif; font-size:13px; padding:8px 10px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
+  .am-add-row input[type=number]{
+    width:60px; font-family:'IBM Plex Mono',monospace; font-size:13px; padding:8px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink); text-align:center;
+  }
+  .am-add-row button{
+    font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:4px; border:none;
+    background:var(--ink); color:var(--paper); cursor:pointer; white-space:nowrap;
+  }
+  .am-add-row button:hover{background:var(--orange);}
 
   /* ---------- timeline shared (loading + gantt) ---------- */
   .tl-shell{display:flex;}
@@ -431,7 +483,28 @@
     </div>
   </section>
 
-  <footer>Riverside Residences, Block C — Site Board · scroll the timeline sections to view the full 49‑day sequence</footer>
+    <footer>Riverside Residences, Block C — Site Board · scroll the timeline sections to view the full 49‑day sequence · click any Gantt bar to edit its crew requirements</footer>
+
+  <div class="modal-backdrop" id="activity-modal-backdrop" hidden>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div>
+          <div class="modal-eyebrow" id="am-id">—</div>
+          <h3 id="am-title">—</h3>
+          <div class="modal-dates" id="am-dates">—</div>
+        </div>
+        <button type="button" class="modal-close" id="am-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="am-crew-list" id="am-crew-list"></div>
+        <div class="am-add-row">
+          <select id="am-trade-select" aria-label="Position"></select>
+          <input type="number" id="am-count-input" min="1" max="50" value="1" aria-label="Headcount">
+          <button type="button" id="am-add-btn">Add position</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -890,7 +963,7 @@
       else pct = Math.round(((daysBetween(s,TODAY)+1)/spanDays)*100);
 
       const primaryTrade = Object.keys(a.crew)[0];
-      const color = tradeById[primaryTrade].color;
+      const color = primaryTrade ? tradeById[primaryTrade].color : '#C9C5BA';
 
       const bar = document.createElement('div');
       bar.className='gantt-bar'+(a.critical?' critical':'');
@@ -899,10 +972,9 @@
       bar.style.left = left+'px';
       bar.style.width = Math.max(width,10)+'px';
       bar.style.background = 'color-mix(in srgb, '+color+' 55%, white)';
-      bar.title = a.name+' · '+a.start+' → '+a.end+' · '+pct+'% complete';
+      bar.title = a.name+' · '+a.start+' → '+a.end+' · '+pct+'% complete — click to edit crew';
       bar.innerHTML = `<div class="fill-done" style="width:${pct}%"></div><span class="lbl">${a.name}</span>`;
-      bar.addEventListener('click', ()=> setDate(clampToProject(new Date(s))) );
-
+      bar.addEventListener('click', ()=> openActivityModal(a.id) );
       rowEl.appendChild(bar);
       ganttInner.appendChild(rowEl);
     });
@@ -952,7 +1024,100 @@
   linkScroll(loadScroll, ganttScroll);
   linkScroll(ganttScroll, loadScroll);
 
-    // ---------- init ----------
+  // ---------- activity crew-edit modal ----------
+  let currentModalActivityId = null;
+  const amBackdrop = document.getElementById('activity-modal-backdrop');
+  const amCrewList = document.getElementById('am-crew-list');
+  const amTradeSelect = document.getElementById('am-trade-select');
+  const amCountInput = document.getElementById('am-count-input');
+
+  function renderAmTradeSelect(){
+    amTradeSelect.innerHTML='';
+    TRADES.forEach(t=>{
+      const opt = document.createElement('option');
+      opt.value=t.id; opt.textContent=t.name;
+      amTradeSelect.appendChild(opt);
+    });
+  }
+
+  function renderCrewList(a){
+    amCrewList.innerHTML='';
+    const entries = Object.entries(a.crew);
+    if(entries.length===0){
+      amCrewList.innerHTML = '<div class="roster-empty">No positions assigned yet — add one below.</div>';
+      return;
+    }
+    entries.forEach(([tradeId,count])=>{
+      const t = tradeById[tradeId];
+      if(!t) return;
+      const row = document.createElement('div');
+      row.className='am-crew-row';
+
+      const left = document.createElement('div');
+      left.className='am-crew-left';
+      left.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.name}`;
+
+      const countInput = document.createElement('input');
+      countInput.type='number'; countInput.className='am-count';
+      countInput.min='0'; countInput.max='50'; countInput.value=count;
+      countInput.addEventListener('change', ()=> updateCrewCount(a, tradeId, countInput.value));
+
+      const rmBtn = document.createElement('button');
+      rmBtn.type='button'; rmBtn.className='am-remove'; rmBtn.textContent='×';
+      rmBtn.setAttribute('aria-label','Remove '+t.name);
+      rmBtn.addEventListener('click', ()=> removeCrewPosition(a, tradeId));
+
+      row.appendChild(left); row.appendChild(countInput); row.appendChild(rmBtn);
+      amCrewList.appendChild(row);
+    });
+  }
+
+  function refreshAfterCrewChange(a){
+    renderCrewList(a);
+    renderLoading();
+    renderGantt();
+    renderBoard();
+  }
+  function updateCrewCount(a, tradeId, value){
+    const n = Math.max(0, parseInt(value)||0);
+    if(n<=0) delete a.crew[tradeId]; else a.crew[tradeId]=n;
+    refreshAfterCrewChange(a);
+  }
+  function removeCrewPosition(a, tradeId){
+    delete a.crew[tradeId];
+    refreshAfterCrewChange(a);
+  }
+  function addCrewPosition(a, tradeId, value){
+    const n = Math.max(1, parseInt(value)||1);
+    a.crew[tradeId] = (a.crew[tradeId]||0) + n;
+    refreshAfterCrewChange(a);
+  }
+
+  function openActivityModal(id){
+    const a = ACTIVITIES.find(x=>x.id===id);
+    if(!a) return;
+    currentModalActivityId = id;
+    document.getElementById('am-id').textContent = a.id;
+    document.getElementById('am-title').textContent = a.name;
+    document.getElementById('am-dates').textContent = fmtLong(toDate(a.start))+' → '+fmtLong(toDate(a.end));
+    renderAmTradeSelect();
+    renderCrewList(a);
+    amCountInput.value = 1;
+    amBackdrop.hidden = false;
+  }
+  function closeActivityModal(){ amBackdrop.hidden = true; currentModalActivityId = null; }
+
+  document.getElementById('am-close').addEventListener('click', closeActivityModal);
+  amBackdrop.addEventListener('click', e=>{ if(e.target===amBackdrop) closeActivityModal(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !amBackdrop.hidden) closeActivityModal(); });
+  document.getElementById('am-add-btn').addEventListener('click', ()=>{
+    const a = ACTIVITIES.find(x=>x.id===currentModalActivityId);
+    if(!a) return;
+    addCrewPosition(a, amTradeSelect.value, amCountInput.value);
+    amCountInput.value = 1;
+  });
+
+  // ---------- init ----------
   renderTradeChips();
   renderRoster();
   renderLoading();
