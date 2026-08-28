@@ -249,6 +249,15 @@
     width:44px; height:36px; padding:2px; border:1px solid var(--line-strong); border-radius:4px;
     background:var(--paper); cursor:pointer; flex:none;
   }
+  .tip-rate-label{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-soft);
+  }
+  .tip-rate-label input{
+    font-family:'Inter',sans-serif; font-size:13px; padding:7px 9px; width:110px; text-align:right;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
   .tip-actions{display:flex; justify-content:flex-end; gap:8px;}
   .tip-btn{
     font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 14px;
@@ -416,6 +425,16 @@
   .legend .dot{width:9px;height:9px;border-radius:2px;}
   .legend .crit-swatch{width:16px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--ink); background:var(--concrete);}
 
+  .cost-summary{
+    display:flex; flex-wrap:wrap; gap:24px; padding:16px 18px; border-bottom:1px solid var(--line-strong);
+  }
+  .cost-stat{display:flex; flex-direction:column; gap:3px;}
+  .cost-stat .label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-soft);
+  }
+  .cost-stat .value{font-family:'Oswald',sans-serif; font-size:22px; font-weight:600; color:var(--ink); letter-spacing:.01em;}
+  .cost-stat .value.accent{color:var(--orange);}
+
   footer{margin-top:40px; text-align:center; font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
 
   @media (max-width:720px){
@@ -462,11 +481,16 @@
         <input type="text" id="roster-name-input" placeholder="Worker name" aria-label="Worker name" required maxlength="60">
         <button type="submit">Add to crew</button>
       </form>
-      <div class="trade-inline-panel" id="trade-inline-panel" hidden>
+          <div class="trade-inline-panel" id="trade-inline-panel" hidden>
         <div class="tip-title" id="tip-title">Add new position</div>
         <div class="tip-row">
           <input type="text" id="tip-name" placeholder="Position name" maxlength="40" aria-label="Position name">
           <input type="color" id="tip-color" value="#6B7280" aria-label="Position color">
+        </div>
+        <div class="tip-row">
+          <label class="tip-rate-label">Daily rate
+            <input type="number" id="tip-rate" min="0" step="10" placeholder="0" aria-label="Daily rate">
+          </label>
         </div>
         <div class="tip-actions">
           <button type="button" id="tip-cancel" class="tip-btn ghost">Cancel</button>
@@ -501,13 +525,30 @@
           <div class="tl-inner" id="load-inner"></div>
         </div>
       </div>
-      <div class="legend" id="load-legend"></div>
+        <div class="legend" id="load-legend"></div>
+    </div>
+  </section>
+
+  <section id="sec-cost">
+    <div class="sec-head">
+      <div><div class="sec-num">04 — Labor Spend</div><h2>Direct Cost</h2></div>
+      <div class="sec-desc">Daily direct manpower cost by trade, using each position's day rate.</div>
+    </div>
+    <div class="panel">
+      <div class="cost-summary" id="cost-summary"></div>
+      <div class="tl-shell">
+        <div class="tl-side" id="cost-side"></div>
+        <div class="tl-scroll" id="cost-scroll">
+          <div class="tl-inner" id="cost-inner"></div>
+        </div>
+      </div>
+      <div class="legend" id="cost-legend"></div>
     </div>
   </section>
 
   <section id="sec-gantt">
     <div class="sec-head">
-      <div><div class="sec-num">04 — Sequence</div><h2>Construction Gantt</h2></div>
+      <div><div class="sec-num">05 — Sequence</div><h2>Construction Gantt</h2></div>
       <div class="sec-desc">Activity durations and progress. Click a bar to edit or add crew, dates, name, or area.</div>
       <button type="button" id="new-activity-btn" class="new-activity-btn">+ New Activity</button>
     </div>
@@ -570,15 +611,16 @@
   "use strict";
 
   // ---------- data ----------
+  const CURRENCY = '₱'; // daily-rate display currency — change this symbol if needed
   const TRADES = [
-    {id:'FM', name:'Foreman',     color:'var(--t-fm)'},
-    {id:'MS', name:'Mason',       color:'var(--t-ms)'},
-    {id:'CP', name:'Carpenter',   color:'var(--t-cp)'},
-    {id:'ST', name:'Steel Fixer', color:'var(--t-st)'},
-    {id:'EL', name:'Electrician', color:'var(--t-el)'},
-    {id:'PL', name:'Plumber',     color:'var(--t-pl)'},
-    {id:'PT', name:'Painter',     color:'var(--t-pt)'},
-    {id:'LB', name:'Laborer',     color:'var(--t-lb)'},
+    {id:'FM', name:'Foreman',     color:'var(--t-fm)', rate:950},
+    {id:'MS', name:'Mason',       color:'var(--t-ms)', rate:750},
+    {id:'CP', name:'Carpenter',   color:'var(--t-cp)', rate:700},
+    {id:'ST', name:'Steel Fixer', color:'var(--t-st)', rate:720},
+    {id:'EL', name:'Electrician', color:'var(--t-el)', rate:780},
+    {id:'PL', name:'Plumber',     color:'var(--t-pl)', rate:780},
+    {id:'PT', name:'Painter',     color:'var(--t-pt)', rate:650},
+    {id:'LB', name:'Laborer',     color:'var(--t-lb)', rate:570},
   ];
   const tradeById = Object.fromEntries(TRADES.map(t=>[t.id,t]));
 
@@ -786,24 +828,26 @@
     if(preserveId && tradeById[preserveId]) tradeSelect.value = preserveId;
   }
 
-    function renameTrade(id, newName, newColor){
+    function renameTrade(id, newName, newColor, newRate){
     const t = tradeById[id];
     if(!t || !newName.trim()) return;
     t.name = newName.trim();
     if(newColor) t.color = newColor;
+    if(newRate!==undefined && newRate!==null && newRate!=='') t.rate = Math.max(0, Number(newRate)||0);
     renderTradeChips();
     renderTradeSelect(id);
     renderRoster();
     renderBoard();
     renderLoading();
     renderGantt();
+    renderCost();
   }
 
-  function addTrade(name, color){
+  function addTrade(name, color, rate){
     if(!name.trim()) return;
     customTradeSeq += 1;
     const id = 'CT'+String(customTradeSeq).padStart(2,'0');
-    const t = { id, name: name.trim(), color: color && color.trim() ? color.trim() : '#6B7280' };
+    const t = { id, name: name.trim(), color: color && color.trim() ? color.trim() : '#6B7280', rate: Math.max(0, Number(rate)||0) };
     TRADES.push(t);
     tradeById[t.id]=t;
     roster[t.id]=[];
@@ -813,6 +857,7 @@
     renderTradeSelect(t.id);
     renderRoster();
     renderLoading();
+    renderCost();
     applyTradeFilter();
   }
 
@@ -833,6 +878,7 @@
   const tipTitle = document.getElementById('tip-title');
   const tipName = document.getElementById('tip-name');
   const tipColor = document.getElementById('tip-color');
+  const tipRate = document.getElementById('tip-rate');
 
   function openTradeForm(mode){
     tradeFormMode = mode;
@@ -843,11 +889,13 @@
       tipTitle.textContent = 'Rename position';
       tipName.value = t.name;
       tipColor.value = resolveColorToHex(t.color);
+      tipRate.value = t.rate || 0;
     } else {
       tradeFormTargetId = null;
       tipTitle.textContent = 'Add new position';
       tipName.value = '';
       tipColor.value = '#6B7280';
+      tipRate.value = '';
     }
     tipPanel.hidden = false;
     tipName.focus();
@@ -862,10 +910,11 @@
     const name = tipName.value.trim();
     if(!name){ tipName.focus(); return; }
     const color = tipColor.value;
+    const rate = tipRate.value;
     if(tradeFormMode==='rename' && tradeFormTargetId){
-      renameTrade(tradeFormTargetId, name, color);
+      renameTrade(tradeFormTargetId, name, color, rate);
     } else {
-      addTrade(name, color);
+      addTrade(name, color, rate);
     }
     closeTradeForm();
   });
@@ -987,7 +1036,96 @@
       loadLegend.appendChild(item);
     });
 
-    syncMarkerHost('load-inner', chartH+30);
+        syncMarkerHost('load-inner', chartH+30);
+  }
+
+  // ---------- direct cost chart ----------
+  const costSide = document.getElementById('cost-side');
+  const costInner = document.getElementById('cost-inner');
+  const costLegend = document.getElementById('cost-legend');
+  const costSummary = document.getElementById('cost-summary');
+
+  function fmtMoney(n){
+    return CURRENCY + Math.round(n).toLocaleString('en-US');
+  }
+
+  function renderCost(){
+    costSide.innerHTML = '<div class="side-cell" style="height:30px;border-bottom:1px solid var(--line-strong);font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Trade</div>';
+    costInner.innerHTML='';
+    costInner.style.width = totalWidth+'px';
+    costInner.appendChild(buildRuler());
+
+    let max=1, totalProject=0, totalToDate=0;
+    const perDayCost = dayList.map(d=>{
+      const c={};
+      activitiesOn(d).forEach(a=> Object.entries(a.crew).forEach(([tr,n])=>{
+        const rate = tradeById[tr] ? (tradeById[tr].rate||0) : 0;
+        c[tr]=(c[tr]||0)+n*rate;
+      }));
+      const sum = Object.values(c).reduce((s,v)=>s+v,0);
+      if(sum>max) max=sum;
+      totalProject += sum;
+      if(d<=TODAY) totalToDate += sum;
+      return c;
+    });
+
+    const chartH = 150;
+    const row = document.createElement('div');
+    row.className='tl-grid-row';
+    row.style.height = chartH+'px';
+    row.style.backgroundSize = '26px '+chartH+'px';
+    row.style.position='relative';
+
+    dayList.forEach((d,i)=>{
+      const costs = perDayCost[i];
+      let yCursor = 0;
+      let sum=0;
+      TRADES.forEach(t=>{
+        const v = costs[t.id]||0;
+        if(v<=0) return;
+        sum+=v;
+        const h = (v/max)*(chartH-18);
+        const seg = document.createElement('div');
+        seg.className='load-seg';
+        seg.dataset.trade = t.id;
+        seg.style.left = (i*26+3)+'px';
+        seg.style.width = '20px';
+        seg.style.height = h+'px';
+        seg.style.bottom = yCursor+'px';
+        seg.style.background = t.color;
+        seg.title = t.name+': '+fmtMoney(v)+' on '+fmtISO(d);
+        row.appendChild(seg);
+        yCursor += h;
+      });
+      if(sum>0){
+        const lbl = document.createElement('div');
+        lbl.className='load-total';
+        lbl.style.left = (i*26+13)+'px';
+        lbl.style.bottom = (yCursor+2)+'px';
+        lbl.style.fontSize = '8px';
+        lbl.textContent = Math.round(sum/1000)+'k';
+        row.appendChild(lbl);
+      }
+    });
+
+    costInner.appendChild(row);
+    costSide.innerHTML += `<div class="side-cell" style="height:${chartH}px;align-items:flex-end;padding-bottom:6px;">Cost by<br>trade / day</div>`;
+
+    costLegend.innerHTML='';
+    TRADES.forEach(t=>{
+      const item=document.createElement('div');
+      item.className='item';
+      item.dataset.trade=t.id;
+      item.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.name} · ${fmtMoney(t.rate||0)}/day`;
+      costLegend.appendChild(item);
+    });
+
+    costSummary.innerHTML = `
+      <div class="cost-stat"><div class="label">Direct cost to date</div><div class="value accent">${fmtMoney(totalToDate)}</div></div>
+      <div class="cost-stat"><div class="label">Projected total direct cost</div><div class="value">${fmtMoney(totalProject)}</div></div>
+      <div class="cost-stat"><div class="label">Project window</div><div class="value" style="font-size:14px;font-family:'IBM Plex Mono',monospace;font-weight:500;">${totalDays} days</div></div>`;
+
+    syncMarkerHost('cost-inner', chartH+30);
   }
 
   // ---------- gantt chart ----------
@@ -1065,6 +1203,9 @@
     document.querySelectorAll('#load-legend .item').forEach(el=>{
       el.style.opacity = activeTrades.has(el.dataset.trade) ? '1' : '0.35';
     });
+    document.querySelectorAll('#cost-legend .item').forEach(el=>{
+      el.style.opacity = activeTrades.has(el.dataset.trade) ? '1' : '0.35';
+    });
     document.querySelectorAll('.gantt-bar').forEach(el=>{
       const trades = el.dataset.trades.split(',');
       const match = trades.some(t=>activeTrades.has(t));
@@ -1075,12 +1216,17 @@
   // ---------- scroll sync between loading & gantt ----------
   const loadScroll = document.getElementById('load-scroll');
   const ganttScroll = document.getElementById('gantt-scroll');
+  const costScroll = document.getElementById('cost-scroll');
   let syncing=false;
   function linkScroll(a,b){
     a.addEventListener('scroll', ()=>{ if(syncing) return; syncing=true; b.scrollLeft=a.scrollLeft; syncing=false; });
   }
   linkScroll(loadScroll, ganttScroll);
   linkScroll(ganttScroll, loadScroll);
+  linkScroll(loadScroll, costScroll);
+  linkScroll(costScroll, loadScroll);
+  linkScroll(ganttScroll, costScroll);
+  linkScroll(costScroll, ganttScroll);
 
   // ---------- activity crew-edit modal ----------
   let currentModalActivityId = null;
@@ -1130,9 +1276,10 @@
     });
   }
 
-  function refreshAfterCrewChange(a){
+   function refreshAfterCrewChange(a){
     renderCrewList(a);
     renderLoading();
+    renderCost();
     renderGantt();
     renderBoard();
   }
@@ -1204,11 +1351,12 @@
       amStart.value = a.start; amEnd.value = a.end;
       return;
     }
-    amDateError.hidden = true;
+      amDateError.hidden = true;
     a.start = s; a.end = e;
     amStart.value = s; amEnd.value = e;
     renderGantt();
     renderLoading();
+    renderCost();
     renderBoard();
   }
   amStart.addEventListener('change', updateActivityDates);
@@ -1221,9 +1369,10 @@
     const start = fmtISO(TODAY);
     const end = fmtISO(clampToProject(new Date(TODAY.getTime()+2*DAY_MS)));
     const a = { id, name:'New Activity', area:'Unspecified', start, end, crew:{}, critical:false };
-    ACTIVITIES.push(a);
+      ACTIVITIES.push(a);
     renderGantt();
     renderLoading();
+    renderCost();
     renderBoard();
     openActivityModal(id);
   }
@@ -1235,6 +1384,7 @@
     closeActivityModal();
     renderGantt();
     renderLoading();
+    renderCost();
     renderBoard();
   }
 
@@ -1254,6 +1404,7 @@
   renderTradeChips();
   renderRoster();
   renderLoading();
+  renderCost();
   renderGantt();
   setDate(new Date(TODAY));
   applyTradeFilter();
@@ -1264,6 +1415,7 @@
     const target = Math.max(0, offsetDays*26 - 260);
     loadScroll.scrollLeft = target;
     ganttScroll.scrollLeft = target;
+    costScroll.scrollLeft = target;
   });
 })();
 </script>
