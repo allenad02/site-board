@@ -226,6 +226,32 @@
   }
   .icon-btn:hover{background:var(--ink) !important; color:var(--paper) !important; border-color:var(--ink) !important;}
 
+  .trade-inline-panel{
+    margin:0 14px 16px; padding:14px; border:1px dashed var(--line-strong); border-radius:6px; background:var(--concrete-light);
+  }
+  .trade-inline-panel[hidden]{display:none;}
+  .tip-title{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); margin-bottom:10px;
+  }
+  .tip-row{display:flex; gap:8px; margin-bottom:12px;}
+  .tip-row input[type=text]{
+    flex:1; font-family:'Inter',sans-serif; font-size:13px; padding:8px 10px;
+    border:1px solid var(--line-strong); border-radius:4px; background:var(--paper); color:var(--ink);
+  }
+  .tip-row input[type=color]{
+    width:44px; height:36px; padding:2px; border:1px solid var(--line-strong); border-radius:4px;
+    background:var(--paper); cursor:pointer; flex:none;
+  }
+  .tip-actions{display:flex; justify-content:flex-end; gap:8px;}
+  .tip-btn{
+    font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 14px;
+    border-radius:4px; border:none; cursor:pointer; background:var(--ink); color:var(--paper); transition:background .15s;
+  }
+  .tip-btn:hover{background:var(--orange);}
+  .tip-btn.ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line-strong);}
+  .tip-btn.ghost:hover{background:var(--concrete); color:var(--ink);}
+
   /* ---------- timeline shared (loading + gantt) ---------- */
   .tl-shell{display:flex;}
   .tl-side{
@@ -343,6 +369,17 @@
         <input type="text" id="roster-name-input" placeholder="Worker name" aria-label="Worker name" required maxlength="60">
         <button type="submit">Add to crew</button>
       </form>
+      <div class="trade-inline-panel" id="trade-inline-panel" hidden>
+        <div class="tip-title" id="tip-title">Add new position</div>
+        <div class="tip-row">
+          <input type="text" id="tip-name" placeholder="Position name" maxlength="40" aria-label="Position name">
+          <input type="color" id="tip-color" value="#6B7280" aria-label="Position color">
+        </div>
+        <div class="tip-actions">
+          <button type="button" id="tip-cancel" class="tip-btn ghost">Cancel</button>
+          <button type="button" id="tip-save" class="tip-btn">Save</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -618,15 +655,17 @@
     if(preserveId && tradeById[preserveId]) tradeSelect.value = preserveId;
   }
 
-  function renameTrade(id, newName){
+    function renameTrade(id, newName, newColor){
     const t = tradeById[id];
     if(!t || !newName.trim()) return;
     t.name = newName.trim();
+    if(newColor) t.color = newColor;
     renderTradeChips();
     renderTradeSelect(id);
     renderRoster();
     renderBoard();
     renderLoading();
+    renderGantt();
   }
 
   function addTrade(name, color){
@@ -646,18 +685,58 @@
     applyTradeFilter();
   }
 
-  document.getElementById('trade-edit-btn').addEventListener('click', ()=>{
-    const t = tradeById[tradeSelect.value];
-    if(!t) return;
-    const newName = window.prompt('Rename "'+t.name+'" to:', t.name);
-    if(newName===null) return;
-    renameTrade(t.id, newName);
-  });
-  document.getElementById('trade-add-btn').addEventListener('click', ()=>{
-    const name = window.prompt('New position name (e.g. Welder, Surveyor):');
-    if(name===null || !name.trim()) return;
-    const color = window.prompt('Color for this position — hex code:', '#6B7280');
-    addTrade(name, color===null ? '#6B7280' : color);
+  function resolveColorToHex(cssColor){
+    const tmp = document.createElement('div');
+    tmp.style.color = cssColor;
+    document.body.appendChild(tmp);
+    const rgb = getComputedStyle(tmp).color;
+    document.body.removeChild(tmp);
+    const m = rgb.match(/\d+/g);
+    if(!m) return '#6B7280';
+    return '#'+m.slice(0,3).map(x=>Number(x).toString(16).padStart(2,'0')).join('');
+  }
+
+  let tradeFormMode = 'add';
+  let tradeFormTargetId = null;
+  const tipPanel = document.getElementById('trade-inline-panel');
+  const tipTitle = document.getElementById('tip-title');
+  const tipName = document.getElementById('tip-name');
+  const tipColor = document.getElementById('tip-color');
+
+  function openTradeForm(mode){
+    tradeFormMode = mode;
+    if(mode==='rename'){
+      const t = tradeById[tradeSelect.value];
+      if(!t) return;
+      tradeFormTargetId = t.id;
+      tipTitle.textContent = 'Rename position';
+      tipName.value = t.name;
+      tipColor.value = resolveColorToHex(t.color);
+    } else {
+      tradeFormTargetId = null;
+      tipTitle.textContent = 'Add new position';
+      tipName.value = '';
+      tipColor.value = '#6B7280';
+    }
+    tipPanel.hidden = false;
+    tipName.focus();
+  }
+  function closeTradeForm(){ tipPanel.hidden = true; }
+
+  document.getElementById('trade-edit-btn').addEventListener('click', ()=> openTradeForm('rename'));
+  document.getElementById('trade-add-btn').addEventListener('click', ()=> openTradeForm('add'));
+  document.getElementById('tip-cancel').addEventListener('click', closeTradeForm);
+  document.getElementById('tip-name').addEventListener('keydown', e=>{ if(e.key==='Escape') closeTradeForm(); });
+  document.getElementById('tip-save').addEventListener('click', ()=>{
+    const name = tipName.value.trim();
+    if(!name){ tipName.focus(); return; }
+    const color = tipColor.value;
+    if(tradeFormMode==='rename' && tradeFormTargetId){
+      renameTrade(tradeFormTargetId, name, color);
+    } else {
+      addTrade(name, color);
+    }
+    closeTradeForm();
   });
 
   // ---------- delegation board ----------
