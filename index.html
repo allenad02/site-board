@@ -218,6 +218,13 @@
     border:none; border-radius:4px; padding:9px 16px; cursor:pointer; transition:background .15s;
   }
   .roster-add button:hover{background:var(--orange);}
+  .icon-btn{
+    width:34px; height:34px; padding:0 !important; flex:none;
+    background:var(--paper) !important; color:var(--ink) !important;
+    border:1px solid var(--line-strong) !important; border-radius:4px;
+    font-size:14px; display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{background:var(--ink) !important; color:var(--paper) !important; border-color:var(--ink) !important;}
 
   /* ---------- timeline shared (loading + gantt) ---------- */
   .tl-shell{display:flex;}
@@ -329,8 +336,10 @@
     </div>
     <div class="panel">
       <div class="roster-grid" id="roster-grid"></div>
-      <form class="roster-add" id="roster-add-form">
+        <form class="roster-add" id="roster-add-form">
         <select id="roster-trade-select" aria-label="Trade"></select>
+        <button type="button" class="icon-btn" id="trade-edit-btn" title="Rename this position" aria-label="Rename this position">✎</button>
+        <button type="button" class="icon-btn" id="trade-add-btn" title="Add a new position" aria-label="Add a new position">+</button>
         <input type="text" id="roster-name-input" placeholder="Worker name" aria-label="Worker name" required maxlength="60">
         <button type="submit">Add to crew</button>
       </form>
@@ -527,11 +536,7 @@
   }
 
   const tradeSelect = document.getElementById('roster-trade-select');
-  TRADES.forEach(t=>{
-    const opt = document.createElement('option');
-    opt.value=t.id; opt.textContent=t.name;
-    tradeSelect.appendChild(opt);
-  });
+  renderTradeSelect();
   document.getElementById('roster-add-form').addEventListener('submit', e=>{
     e.preventDefault();
     const nameInput = document.getElementById('roster-name-input');
@@ -584,18 +589,75 @@
   document.getElementById('nextDay').addEventListener('click', ()=> setDate(new Date(selectedDate.getTime()+DAY_MS)));
   document.getElementById('todayBtn').addEventListener('click', ()=> setDate(new Date(TODAY)));
 
-  // trade chips
+    // trade chips
   const chipWrap = document.getElementById('tradeChips');
-  TRADES.forEach(t=>{
-    const chip = document.createElement('button');
-    chip.className='chip active';
-    chip.innerHTML = '<span class="dot" style="background:'+t.color+'"></span>'+t.name;
-    chip.addEventListener('click', ()=>{
-      if(activeTrades.has(t.id)) activeTrades.delete(t.id); else activeTrades.add(t.id);
-      chip.classList.toggle('active', activeTrades.has(t.id));
-      applyTradeFilter();
+  function renderTradeChips(){
+    chipWrap.innerHTML='';
+    TRADES.forEach(t=>{
+      const chip = document.createElement('button');
+      chip.className='chip'+(activeTrades.has(t.id)?' active':'');
+      chip.innerHTML = '<span class="dot" style="background:'+t.color+'"></span>'+t.name;
+      chip.addEventListener('click', ()=>{
+        if(activeTrades.has(t.id)) activeTrades.delete(t.id); else activeTrades.add(t.id);
+        chip.classList.toggle('active', activeTrades.has(t.id));
+        applyTradeFilter();
+      });
+      chipWrap.appendChild(chip);
     });
-    chipWrap.appendChild(chip);
+  }
+
+  // ---------- position (trade) management: rename existing / add new ----------
+  let customTradeSeq = 0;
+  function renderTradeSelect(preserveId){
+    tradeSelect.innerHTML='';
+    TRADES.forEach(t=>{
+      const opt = document.createElement('option');
+      opt.value=t.id; opt.textContent=t.name;
+      tradeSelect.appendChild(opt);
+    });
+    if(preserveId && tradeById[preserveId]) tradeSelect.value = preserveId;
+  }
+
+  function renameTrade(id, newName){
+    const t = tradeById[id];
+    if(!t || !newName.trim()) return;
+    t.name = newName.trim();
+    renderTradeChips();
+    renderTradeSelect(id);
+    renderRoster();
+    renderBoard();
+    renderLoading();
+  }
+
+  function addTrade(name, color){
+    if(!name.trim()) return;
+    customTradeSeq += 1;
+    const id = 'CT'+String(customTradeSeq).padStart(2,'0');
+    const t = { id, name: name.trim(), color: color && color.trim() ? color.trim() : '#6B7280' };
+    TRADES.push(t);
+    tradeById[t.id]=t;
+    roster[t.id]=[];
+    workerSeq[t.id]=0;
+    activeTrades.add(t.id);
+    renderTradeChips();
+    renderTradeSelect(t.id);
+    renderRoster();
+    renderLoading();
+    applyTradeFilter();
+  }
+
+  document.getElementById('trade-edit-btn').addEventListener('click', ()=>{
+    const t = tradeById[tradeSelect.value];
+    if(!t) return;
+    const newName = window.prompt('Rename "'+t.name+'" to:', t.name);
+    if(newName===null) return;
+    renameTrade(t.id, newName);
+  });
+  document.getElementById('trade-add-btn').addEventListener('click', ()=>{
+    const name = window.prompt('New position name (e.g. Welder, Surveyor):');
+    if(name===null || !name.trim()) return;
+    const color = window.prompt('Color for this position — hex code:', '#6B7280');
+    addTrade(name, color===null ? '#6B7280' : color);
   });
 
   // ---------- delegation board ----------
@@ -812,6 +874,7 @@
   linkScroll(ganttScroll, loadScroll);
 
     // ---------- init ----------
+  renderTradeChips();
   renderRoster();
   renderLoading();
   renderGantt();
