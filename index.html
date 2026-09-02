@@ -454,7 +454,7 @@
     <div class="eyebrow">Daily Site Board</div>
     <h1>Riverside Residences — Block C</h1>
     <div class="subtitle">Manpower delegation, loading, and construction schedule for the Block C structural &amp; MEP works.</div>
-    <div class="stamp" id="stamp">DAY <b id="stampDay">—</b> OF 49</div>
+    <div class="stamp" id="stamp">DAY <b id="stampDay">—</b> OF <span id="stampTotal">49</span></div>
 
     <div class="controls">
       <div class="datebar">
@@ -462,6 +462,13 @@
         <div class="date-readout" id="dateReadout">—</div>
         <button id="nextDay" aria-label="Next day">›</button>
         <button class="today-btn" id="todayBtn">Jump to today</button>
+      </div>
+      <div class="datebar" id="projectDatesBar">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(251,250,247,.7);">Project:</label>
+        <input type="date" id="projStartInput" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 8px;border-radius:4px;border:1px solid rgba(251,250,247,.3);background:transparent;color:var(--paper);">
+        <span style="color:rgba(251,250,247,.5);">–</span>
+        <input type="date" id="projEndInput" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 8px;border-radius:4px;border:1px solid rgba(251,250,247,.3);background:transparent;color:var(--paper);">
+        <button class="today-btn" id="applyProjectDatesBtn" type="button">Apply</button>
       </div>
       <div class="trades" id="tradeChips"></div>
     </div>
@@ -653,15 +660,19 @@
   function fmtISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function fmtLong(d){ return d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric', year:'numeric'}); }
 
-  const projStart = toDate('2026-08-03');
-  const projEnd   = toDate('2026-09-20');
-  const totalDays = Math.round((projEnd-projStart)/DAY_MS)+1;
+  let projStart = toDate('2026-08-03');
+  let projEnd   = toDate('2026-09-20');
+  let totalDays = Math.round((projEnd-projStart)/DAY_MS)+1;
   const TODAY = toDate('2026-08-27'); // simulated "today" within the project window
 
   // ---------- roster: build per-trade roster sized to peak concurrent demand ----------
   const dayList = [];
-  for(let i=0;i<totalDays;i++){ dayList.push(new Date(projStart.getTime()+i*DAY_MS)); }
-
+  function rebuildDayList(){
+    dayList.length = 0;
+    totalDays = Math.round((projEnd-projStart)/DAY_MS)+1;
+    for(let i=0;i<totalDays;i++){ dayList.push(new Date(projStart.getTime()+i*DAY_MS)); }
+  }
+  rebuildDayList();
   function activitiesOn(date){
     return ACTIVITIES.filter(a=> toDate(a.start)<=date && date<=toDate(a.end));
   }
@@ -792,12 +803,42 @@
     dateReadout.textContent = fmtLong(selectedDate);
     const dayNum = Math.round((TODAY-projStart)/DAY_MS)+1;
     stampDay.textContent = dayNum;
+    document.getElementById('stampTotal').textContent = totalDays;
     renderBoard();
     renderMarkers();
   }
   document.getElementById('prevDay').addEventListener('click', ()=> setDate(new Date(selectedDate.getTime()-DAY_MS)));
   document.getElementById('nextDay').addEventListener('click', ()=> setDate(new Date(selectedDate.getTime()+DAY_MS)));
   document.getElementById('todayBtn').addEventListener('click', ()=> setDate(new Date(TODAY)));
+
+  // ---------- project date range editing ----------
+  const projStartInput = document.getElementById('projStartInput');
+  const projEndInput = document.getElementById('projEndInput');
+  projStartInput.value = fmtISO(projStart);
+  projEndInput.value = fmtISO(projEnd);
+
+  document.getElementById('applyProjectDatesBtn').addEventListener('click', ()=>{
+    const newStartStr = projStartInput.value;
+    const newEndStr = projEndInput.value;
+    if(!newStartStr || !newEndStr) return;
+    const newStart = toDate(newStartStr);
+    const newEnd = toDate(newEndStr);
+    if(newStart > newEnd){
+      alert('Project start date must be on or before the end date.');
+      projStartInput.value = fmtISO(projStart);
+      projEndInput.value = fmtISO(projEnd);
+      return;
+    }
+    projStart = newStart;
+    projEnd = newEnd;
+    rebuildDayList();
+    totalWidth = totalDays * 26;
+    setDate(clampToProject(selectedDate));
+    renderLoading();
+    renderCost();
+    renderGantt();
+    applyTradeFilter();
+  });
 
     // trade chips
   const chipWrap = document.getElementById('tradeChips');
@@ -960,7 +1001,7 @@
     });
     return ruler;
   }
-  const totalWidth = totalDays * 26; // matches --day-w
+  let totalWidth = totalDays * 26; // matches --day-w
 
   // ---------- manpower loading chart ----------
   const loadSide = document.getElementById('load-side');
