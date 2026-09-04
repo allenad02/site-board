@@ -1523,6 +1523,106 @@
     persistState();
   }
 
+    // ---------- Excel import ----------
+  function isValidDate(v){ return v instanceof Date && !isNaN(v); }
+
+  function parseGanttWorkbook(rows){
+    // Column layout (0-indexed): B=1 item#, C=2 sub-code, D=3 Description,
+    // E=4 Amount, F=5 Start Date, G=6 End Date. A row counts as an
+    // ACTIVITY only if both Start and End are real dates; otherwise its
+    // Description becomes the "Area" label for activities that follow.
+    const parsed = [];
+    let lastHeader = null;
+    rows.forEach(row=>{
+      const name = row[3];
+      const start = row[5];
+      const end = row[6];
+      if(!name || typeof name !== 'string' || !name.trim()) return;
+      if(isValidDate(start) && isValidDate(end)){
+        parsed.push({ name: name.trim(), area: lastHeader || 'General', start: fmtISO(start), end: fmtISO(end) });
+      } else {
+        lastHeader = name.trim();
+      }
+    });
+    return parsed;
+  }
+
+  function importExcelFile(file){
+    const reader = new FileReader();
+    reader.onload = function(evt){
+      let parsedActivities;
+      try{
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type:'array', cellDates:true});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true});
+        parsedActivities = parseGanttWorkbook(rows);
+      }catch(err){
+        alert('Could not read that file. Make sure it\'s a valid .xlsx export of your schedule.');
+        console.error(err);
+        return;
+      }
+
+      if(parsedActivities.length === 0){
+        alert('No activities with valid Start/End dates were found in that file.');
+        return;
+      }
+
+      const proceed = window.confirm(
+        'Found ' + parsedActivities.length + ' activities in this file.\n\n' +
+        'Importing will REPLACE all ' + ACTIVITIES.length + ' activities currently on the board.\n' +
+        'Crew and critical-path flags are not in this file — you\'ll need to add crew per activity afterward.\n\n' +
+        'Continue?'
+      );
+      if(!proceed) return;
+
+      ACTIVITIES.length = 0;
+      activitySeq = 0;
+      parsedActivities.forEach(pa=>{
+        activitySeq += 1;
+        ACTIVITIES.push({
+          id: 'A'+String(activitySeq).padStart(2,'0'),
+          name: pa.name,
+          area: pa.area,
+          start: pa.start,
+          end: pa.end,
+          crew: {},
+          critical: false
+        });
+      });
+
+      // Extend the project date range if the import goes beyond it
+      const importStart = ACTIVITIES.reduce((min,a)=> toDate(a.start)<min ? toDate(a.start) : min, toDate(ACTIVITIES[0].start));
+      const importEnd = ACTIVITIES.reduce((max,a)=> toDate(a.end)>max ? toDate(a.end) : max, toDate(ACTIVITIES[0].end));
+      if(importStart < projStart) projStart = importStart;
+      if(importEnd > projEnd) projEnd = importEnd;
+      rebuildDayList();
+      totalWidth = totalDays * 26;
+
+      renderGantt();
+      renderLoading();
+      renderCost();
+      renderBoard();
+      setDate(clampToProject(selectedDate));
+      persistState();
+
+      alert('Imported ' + parsedActivities.length + ' activities. Click any Gantt bar to assign crew.');
+    };
+    reader.onerror = function(){
+      alert('Could not read that file.');
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  document.getElementById('import-excel-btn').addEventListener('click', ()=>{
+    document.getElementById('excel-import-input').click();
+  });
+  document.getElementById('excel-import-input').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(file) importExcelFile(file);
+    e.target.value = ''; // allow re-uploading the same file later
+  });
+
   document.getElementById('new-activity-btn').addEventListener('click', addNewActivity);
   document.getElementById('am-delete-btn').addEventListener('click', ()=> deleteActivity(currentModalActivityId));
   document.getElementById('am-close').addEventListener('click', closeActivityModal);
