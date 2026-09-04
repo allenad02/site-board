@@ -712,9 +712,78 @@
     }
   });
 
-    // ---------- roster editing: add / remove workers ----------
+        // ---------- roster editing: add / remove workers ----------
   const workerSeq = {};
   TRADES.forEach(t=> workerSeq[t.id] = roster[t.id].length);
+
+  // ---------- save / restore state (Firebase Realtime Database) ----------
+  function collectState(){
+    return {
+      trades: TRADES.map(t=>({id:t.id, name:t.name, color:t.color, rate:t.rate})),
+      activities: ACTIVITIES.map(a=>({id:a.id, name:a.name, area:a.area, start:a.start, end:a.end, crew:{...a.crew}, critical:a.critical})),
+      roster: Object.fromEntries(TRADES.map(t=>[t.id, roster[t.id].map(w=>({id:w.id, name:w.name}))])),
+      workerSeq: {...workerSeq},
+      customTradeSeq: typeof customTradeSeq !== 'undefined' ? customTradeSeq : 0,
+      activitySeq: typeof activitySeq !== 'undefined' ? activitySeq : 0,
+      projStart: fmtISO(projStart),
+      projEnd: fmtISO(projEnd)
+    };
+  }
+
+  function persistState(){
+    if(suppressRemoteSync) return;
+    dbRef.set(collectState()).catch(err=>{
+      console.warn('Could not save site board state:', err);
+    });
+  }
+
+  function applySavedState(saved){
+    TRADES.length = 0;
+    saved.trades.forEach(t=> TRADES.push({id:t.id, name:t.name, color:t.color, rate:t.rate}));
+    Object.keys(tradeById).forEach(k=> delete tradeById[k]);
+    TRADES.forEach(t=> tradeById[t.id]=t);
+
+    ACTIVITIES.length = 0;
+    saved.activities.forEach(a=> ACTIVITIES.push({id:a.id, name:a.name, area:a.area, start:a.start, end:a.end, crew:{...a.crew}, critical:a.critical}));
+
+    Object.keys(roster).forEach(k=> delete roster[k]);
+    TRADES.forEach(t=>{ roster[t.id] = ((saved.roster && saved.roster[t.id]) || []).map(w=>({id:w.id, name:w.name})); });
+
+    Object.keys(workerSeq).forEach(k=> delete workerSeq[k]);
+    TRADES.forEach(t=>{
+      workerSeq[t.id] = (saved.workerSeq && saved.workerSeq[t.id]!==undefined) ? saved.workerSeq[t.id] : roster[t.id].length;
+    });
+
+    customTradeSeq = saved.customTradeSeq || 0;
+    activitySeq = saved.activitySeq || ACTIVITIES.reduce((max,a)=> Math.max(max, parseInt(a.id.slice(1))||0), 0);
+
+    if(saved.projStart) projStart = toDate(saved.projStart);
+    if(saved.projEnd) projEnd = toDate(saved.projEnd);
+    rebuildDayList();
+    totalWidth = totalDays * 26;
+  }
+
+  function rerenderEverything(){
+    projStartInput.value = fmtISO(projStart);
+    projEndInput.value = fmtISO(projEnd);
+    renderTradeSelect();
+    renderTradeChips();
+    renderRoster();
+    renderLoading();
+    renderCost();
+    renderGantt();
+    setDate(clampToProject(selectedDate));
+    applyTradeFilter();
+  }
+
+  dbRef.on('value', snapshot=>{
+    const saved = snapshot.val();
+    if(!saved || !saved.trades || !saved.activities) return;
+    suppressRemoteSync = true;
+    applySavedState(saved);
+    rerenderEverything();
+    suppressRemoteSync = false;
+  });
 
   function addWorker(tradeId, name){
     workerSeq[tradeId] += 1;
@@ -722,11 +791,13 @@
     roster[tradeId].push({ id, name });
     renderRoster();
     renderBoard();
+    persistState();
   }
   function removeWorker(tradeId, workerId){
     roster[tradeId] = roster[tradeId].filter(w=> w.id!==workerId);
     renderRoster();
     renderBoard();
+    persistState();
   }
 
   const rosterGrid = document.getElementById('roster-grid');
@@ -897,6 +968,7 @@
     renderLoading();
     renderGantt();
     renderCost();
+    persistState();
   }
 
   function addTrade(name, color, rate){
@@ -915,6 +987,7 @@
     renderLoading();
     renderCost();
     applyTradeFilter();
+    persistState();
   }
 
   function resolveColorToHex(cssColor){
@@ -1332,12 +1405,13 @@
     });
   }
 
-   function refreshAfterCrewChange(a){
+  function refreshAfterCrewChange(a){
     renderCrewList(a);
     renderLoading();
     renderCost();
     renderGantt();
     renderBoard();
+    persistState();
   }
   function updateCrewCount(a, tradeId, value){
     const n = Math.max(0, parseInt(value)||0);
