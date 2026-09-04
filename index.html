@@ -1529,24 +1529,27 @@
     // ---------- Excel import ----------
   function isValidDate(v){ return v instanceof Date && !isNaN(v); }
 
-  function parseGanttWorkbook(rows){
-    // Column layout (0-indexed): B=1 item#, C=2 sub-code, D=3 Description,
-    // E=4 Amount, F=5 Start Date, G=6 End Date. A row counts as an
-    // ACTIVITY only if both Start and End are real dates; otherwise its
-    // Description becomes the "Area" label for activities that follow.
+  function parseGanttWorkbook(sheet){
+    // Reads columns D, F, G by exact cell address (D=col index 3, F=5, G=6,
+    // 0-based with A=0) — this works regardless of where the sheet's used
+    // range starts, unlike array-index-based row parsing.
+    const range = XLSX.utils.decode_range(sheet['!ref']);
     const parsed = [];
     let lastHeader = null;
-    rows.forEach(row=>{
-      const name = row[3];
-      const start = row[5];
-      const end = row[6];
-      if(!name || typeof name !== 'string' || !name.trim()) return;
+    for(let r = range.s.r; r <= range.e.r; r++){
+      const nameCell = sheet[XLSX.utils.encode_cell({r:r, c:3})];
+      const startCell = sheet[XLSX.utils.encode_cell({r:r, c:5})];
+      const endCell = sheet[XLSX.utils.encode_cell({r:r, c:6})];
+      const name = nameCell ? nameCell.v : null;
+      if(!name || typeof name !== 'string' || !name.trim()) continue;
+      const start = startCell ? startCell.v : null;
+      const end = endCell ? endCell.v : null;
       if(isValidDate(start) && isValidDate(end)){
         parsed.push({ name: name.trim(), area: lastHeader || 'General', start: fmtISO(start), end: fmtISO(end) });
       } else {
         lastHeader = name.trim();
       }
-    });
+    }
     return parsed;
   }
 
@@ -1558,8 +1561,7 @@
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, {type:'array', cellDates:true});
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true});
-        parsedActivities = parseGanttWorkbook(rows);
+        parsedActivities = parseGanttWorkbook(sheet);
       }catch(err){
         alert('Could not read that file. Make sure it\'s a valid .xlsx export of your schedule.');
         console.error(err);
