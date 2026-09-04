@@ -618,6 +618,20 @@
 (function(){
   "use strict";
 
+  // ---------- firebase ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyA4cCqk8HbQtrV0wEguTJRckPNES80cme8",
+    authDomain: "manpower-gantt-sched.firebaseapp.com",
+    databaseURL: "https://manpower-gantt-sched-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "manpower-gantt-sched",
+    storageBucket: "manpower-gantt-sched.firebasestorage.app",
+    messagingSenderId: "508938749563",
+    appId: "1:508938749563:web:aab8c4bc5a28efc62144de"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const dbRef = firebase.database().ref('siteBoard');
+  let suppressRemoteSync = false;
+
   // ---------- data ----------
   const CURRENCY = '₱'; // daily-rate display currency — change this symbol if needed
   const TRADES = [
