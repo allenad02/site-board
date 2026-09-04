@@ -924,6 +924,7 @@
     renderCost();
     renderGantt();
     applyTradeFilter();
+    persistState();
   });
 
     // trade chips
@@ -1489,6 +1490,7 @@
     renderLoading();
     renderCost();
     renderBoard();
+    persistState();
   }
   amStart.addEventListener('change', updateActivityDates);
   amEnd.addEventListener('change', updateActivityDates);
@@ -1506,6 +1508,7 @@
     renderCost();
     renderBoard();
     openActivityModal(id);
+    persistState();
   }
   function deleteActivity(id){
     const idx = ACTIVITIES.findIndex(x=>x.id===id);
@@ -1517,6 +1520,7 @@
     renderLoading();
     renderCost();
     renderBoard();
+    persistState();
   }
 
   document.getElementById('new-activity-btn').addEventListener('click', addNewActivity);
@@ -1531,22 +1535,39 @@
     amCountInput.value = 1;
   });
 
-  // ---------- init ----------
-  renderTradeChips();
-  renderRoster();
-  renderLoading();
-  renderCost();
-  renderGantt();
-  setDate(new Date(TODAY));
-  applyTradeFilter();
+   // ---------- init: wait for the first snapshot from Firebase, then render ----------
+  dbRef.once('value').then(snapshot=>{
+    const saved = snapshot.val();
+    if(saved && saved.trades && saved.activities){
+      applySavedState(saved);
+    }
+    projStartInput.value = fmtISO(projStart);
+    projEndInput.value = fmtISO(projEnd);
+    renderTradeSelect();
 
-  // center scroll on "today" initially
-  requestAnimationFrame(()=>{
-    const offsetDays = daysBetween(projStart, TODAY);
-    const target = Math.max(0, offsetDays*26 - 260);
-    loadScroll.scrollLeft = target;
-    ganttScroll.scrollLeft = target;
-    costScroll.scrollLeft = target;
+    renderTradeChips();
+    renderRoster();
+    renderLoading();
+    renderCost();
+    renderGantt();
+    setDate(new Date(TODAY));
+    applyTradeFilter();
+
+    if(!saved){
+    // First time anyone's opened this — seed the database with the defaults
+      persistState();
+    }
+
+    requestAnimationFrame(()=>{
+      const offsetDays = daysBetween(projStart, TODAY);
+      const target = Math.max(0, offsetDays*26 - 260);
+      loadScroll.scrollLeft = target;
+      ganttScroll.scrollLeft = target;
+      costScroll.scrollLeft = target;
+    });
+  }).catch(err=>{
+    console.error('Could not load site board from Firebase:', err);
+    alert('Could not connect to the shared database. Check your internet connection and try again.');
   });
 })();
 </script>
